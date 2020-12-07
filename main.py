@@ -1,11 +1,13 @@
 from dotenv import DotEnv
+from twilio.rest import Client
 import requests
 
 dotenv = DotEnv()
 
 STOCK = "NIO"
-COMPANY_NAME = "Tesla Inc"
-
+client = Client(dotenv.get('TWILIO_SID'), dotenv.get('TWILIO_AUTH'))
+TWILIO_NUMBER=""
+VERIFIED_NUMBER = ""
 
 def get_datily_stock_data(stock):
     stock_params = {
@@ -31,8 +33,6 @@ def stock_moved_by_5(stock):
         return False
 
 
-## STEP 2: Use https://newsapi.org
-# Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME.
 def get_news(stock):
     news_params = {
         "q": stock,
@@ -43,23 +43,19 @@ def get_news(stock):
     return res.json()["articles"][:3]
 
 
-## STEP 3: Use https://www.twilio.com
-# Send a seperate message with the percentage change and each article's title and description to your phone number. 
+def get_formatted_stock_news(stock):
+    return [f"Headline: {article['title']}.\nBrief: {article['description']}" for article in get_news(stock)]
 
 
+def send_articles(stock):
+    articles = get_formatted_stock_news(stock)
+    for article in articles:
+        message = client.messages.create(
+            body=article,
+            from_=TWILIO_NUMBER,
+            to=VERIFIED_NUMBER
+        )
 
 
-
-print(get_news(STOCK))
-
-#Optional: Format the SMS message like this: 
-"""
-TSLA: 🔺2%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-or
-"TSLA: 🔻5%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-"""
-
+if stock_moved_by_5(STOCK):
+    send_articles(STOCK)
